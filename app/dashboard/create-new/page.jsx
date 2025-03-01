@@ -1,9 +1,12 @@
-"use client"
+'use client';
+
 import React, { useState } from 'react';
 import SelectTopic from './_components/SelectTopic';
+import SelectStyle from './_components/SelectStyle';
 
 function CreateNew() {
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('');
 
   return (
     <div className='md:px-20'>
@@ -11,7 +14,10 @@ function CreateNew() {
       <div className='mt-8'>
         <SelectTopic onTopicChange={setSelectedTopic} />
       </div>
-     
+      <div className='mt-8'>
+        <SelectStyle onStyleChange={setSelectedStyle} />
+      </div>
+      
     </div>
   );
 }
