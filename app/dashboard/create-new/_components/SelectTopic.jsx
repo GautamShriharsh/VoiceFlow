@@ -24,11 +24,11 @@ function SelectTopic({ onTopicChange }) {
   const [customPrompt, setCustomPrompt] = useState('');
 
   // Handle custom prompt submission
-  const handleCustomPrompt = () => {
-    if (customPrompt.trim() && selectedValue === 'custom') {
-      onTopicChange(customPrompt); // Pass custom prompt to parent
-      setSelectedValue(customPrompt); // Update selected value
-      setCustomPrompt(''); // Clear textarea
+  const handleCustomChange = (e) => {
+    const value = e.target.value;
+    setCustomPrompt(value);
+    if (selectedValue === 'custom') {
+      onTopicChange(value); // Pass custom prompt to parent in real-time
     }
   };
 
@@ -41,12 +41,12 @@ function SelectTopic({ onTopicChange }) {
   };
 
   return (
-    <div className='shadow-md p-4 rounded-lg bg-white '>
-      <h3 className='text-primary text-2xl font-semibold mb-2'>Content</h3>
+    <div className='shadow-md p-4 rounded-lg bg-white text-primary text-2xl'>
+      <h3 className='text-lg font-semibold mb-2'>Content</h3>
       <p className='text-sm text-gray-600 mb-4'>What is the topic of your video?</p>
       <Select onValueChange={handleSelectChange} value={selectedValue}>
-        <SelectTrigger className='w-full max-w-xs'>
-          <SelectValue placeholder="Select a topic" />
+        <SelectTrigger className='w-full max-w-xs text-black'>
+          <SelectValue placeholder="Select a topic" className='text-black' />
         </SelectTrigger>
         <SelectContent>
           {options.map((option) => (
@@ -57,19 +57,13 @@ function SelectTopic({ onTopicChange }) {
         </SelectContent>
       </Select>
       {selectedValue === 'custom' && (
-        <div className='mt-4'>
+        <div className='mt-4 text-black'>
           <Textarea
             value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
+            onChange={handleCustomChange} // Update custom prompt and parent state
             placeholder='Enter your custom topic or detailed prompt'
             className='w-full max-w-xs p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500'
           />
-          <button
-            onClick={handleCustomPrompt}
-            className='mt-2 bg-purple-500 text-white px-4 py-2 rounded-md hover:bg-purple-600'
-          >
-            Submit
-          </button>
         </div>
       )}
     </div>

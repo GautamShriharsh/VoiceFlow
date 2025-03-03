@@ -1,4 +1,5 @@
-'use client'; 
+'use client'; // Mark as Client Component for useState and event handling
+
 import React, { useState } from 'react';
 import Image from 'next/image';
 
@@ -22,7 +23,7 @@ function SelectStyle({ onStyleChange }) {
     <div className='shadow-md p-4 rounded-lg bg-white mt-4'>
       <h3 className='text-primary text-2xl font-semibold mb-2'>Style</h3>
       <p className='text-sm text-gray-600 mb-4'>Choose the style of your video</p>
-      <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1'> {/* Responsive grid */}
+      <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-1'>
         {styleOptions.map((option) => (
           <div
             key={option.name}
