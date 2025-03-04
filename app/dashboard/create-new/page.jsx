@@ -5,6 +5,7 @@ import SelectTopic from './_components/SelectTopic';
 import SelectStyle from './_components/SelectStyle';
 import SelectDuration from './_components/SelectDuration';
 import axios from 'axios';
+import CustomLoading from './_components/CustomLoading';
 
 function CreateNew() {
   // Single state object to hold all form data
@@ -13,6 +14,9 @@ function CreateNew() {
     style: '',
     duration: '',
   });
+
+  const [loading,setLoading] = useState(false);
+  const [videoScript, setVideoScript] = useState();
 
   // Handler to update formData
   const handleChange = (field, value) => {
@@ -28,14 +32,18 @@ function CreateNew() {
   
   //Get Video script
    const GetVideoScript = async () => {
+    setLoading(true)
     const prompt = `Write a script to generate ${formData.duration} seconds video on topic : ${formData.topic} along with AI image prompt in ${formData.style} format for each scene and give me result in JSON format with imagePrompt and ContentText as field, No Plain text.`
     // console.log(prompt);
     
      const result = await axios.post('/api/get-video-script', {
        prompt: prompt
       }).then(res => {
-        console.log(res.data);
-      })
+        console.log(res.data.result);
+        setVideoScript(res.data.result);
+      });
+    setLoading(false);
+
    }
 
   return (
@@ -60,6 +68,8 @@ function CreateNew() {
           Create Short Video
         </button>
       </div>
+
+      <CustomLoading loading={loading}/>
     </div>
   );
 }
