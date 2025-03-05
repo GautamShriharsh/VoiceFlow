@@ -1,7 +1,7 @@
-import textToSpeech   from "@google-cloud/text-to-speech"; // Named import
+import textToSpeech   from "@google-cloud/text-to-speech"; 
 import { NextResponse } from "next/server";
 import fs from 'fs';
-import { promisify } from 'util'; // Direct import of promisify
+import { promisify } from 'util'; 
 import { storage } from "@/configs/firebaseConfig";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
