@@ -42,7 +42,7 @@ function SelectTopic({ onTopicChange }) {
 
   return (
     <div className='shadow-md p-4 rounded-lg bg-white text-primary text-2xl'>
-      <h3 className='text-lg font-semibold mb-2'>Content</h3>
+      <h3 className='font-semibold mb-2'>Content</h3>
       <p className='text-sm text-gray-600 mb-4'>What is the topic of your video?</p>
       <Select onValueChange={handleSelectChange} value={selectedValue}>
         <SelectTrigger className='w-full max-w-xs text-black'>
