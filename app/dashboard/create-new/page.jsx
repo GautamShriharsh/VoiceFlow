@@ -8,9 +8,7 @@ import axios from 'axios';
 import CustomLoading from './_components/CustomLoading';
 import { v4 as uuidv4 } from 'uuid';
 
-
 function CreateNew() {
-  // Single state object to hold all form data
   const [formData, setFormData] = useState({
     topic: '',
     style: '',
@@ -19,9 +17,9 @@ function CreateNew() {
 
   const [loading, setLoading] = useState(false);
   const [videoScript, setVideoScript] = useState();
-  const [audioFileUrl,setAudioFileUrl] = useState();
+  const [audioFileUrl, setAudioFileUrl] = useState();
+  const [captions, setCaptions] =  useState();
 
-  // Handler to update formData
   const handleChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -37,26 +35,47 @@ function CreateNew() {
     }
   };
 
-  // Get Video script
   const GetVideoScript = async () => {
     setLoading(true);
     const prompt = `Write a script for a ${formData.duration}-second video on topic: ${formData.topic} along with AI image prompts in ${formData.style} format for each scene and a single cohesive voiceover script narrating the entire story. Return the result in JSON format with imagePrompt, contentText, and voiceover as fields, no plain text.`;
 
     try {
       const response = await axios.post('/api/get-video-script', { prompt });
-      const scriptData = response.data.result; // Store the result
+      const scriptData = response.data.result;
       if (Array.isArray(scriptData)) {
-        setVideoScript(scriptData); // Update state with the array
-        console.log(videoScript);
-        
-        await GenerateAudioFile(scriptData); // Pass the result directly
-        
+        setVideoScript(scriptData);
+        console.log('Video script generated:', scriptData);
+        const generatedAudioUrl = await GenerateAudioFile(scriptData);
+        if (generatedAudioUrl) {
+          setAudioFileUrl(generatedAudioUrl);
+          await GenerateAudioCaption(generatedAudioUrl);
+        } else {
+          throw new Error('Failed to generate audio file URL');
+        }
       } else {
         console.error('Invalid response format: expected an array', scriptData);
-        setVideoScript([]); // Set to empty array as fallback
+        setVideoScript([]);
       }
     } catch (error) {
-      console.error('Error fetching video script:', error.message);
+      console.error('Error in GetVideoScript:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const GenerateAudioCaption = async (fileUrl) => {
+    if (!fileUrl) {
+      console.error('No audio file URL provided');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axios.post('/api/generate-caption', { audioFileUrl: fileUrl });
+      console.log('Caption result:', response.data.result);
+      setCaptions(response?.data?.result);
+    } catch (error) {
+      console.error('Error generating caption:', error.message);
     } finally {
       setLoading(false);
     }
@@ -65,24 +84,32 @@ function CreateNew() {
   const GenerateAudioFile = async (videoScript) => {
     if (!Array.isArray(videoScript)) {
       console.error('videoScript is not an array:', videoScript);
-      return; // Exit if not an array
+      return null;
     }
 
     let voiceoverScript = '';
     const id = uuidv4();
     videoScript.forEach((item) => {
       if (item && item.voiceover) {
-        voiceoverScript += item.voiceover; // Concatenate only if item and voiceOver exist
+        voiceoverScript += item.voiceover + ' ';
       }
     });
-    console.log(voiceoverScript); // Should now log the concatenated text
-    
-    await axios.post('/api/generate-audio',{
-      text:voiceoverScript,
-      id:id
-    }).then(res => {
-      setAudioFileUrl(res.data.result);
-    })
+    console.log('Voiceover script:', voiceoverScript.trim());
+
+    try {
+      const response = await axios.post('/api/generate-audio', { text: voiceoverScript, id });
+      console.log('GenerateAudioFile response:', response.data);
+      const audioUrl = response.data.result || response.data.downloadUrl;
+      if (audioUrl) {
+        return audioUrl;
+      } else {
+        console.error('No valid URL in response:', response.data);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error generating audio file:', error.message, error.response?.data);
+      return null;
+    }
   };
 
   return (
