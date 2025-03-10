@@ -18,7 +18,8 @@ function CreateNew() {
   const [loading, setLoading] = useState(false);
   const [videoScript, setVideoScript] = useState();
   const [audioFileUrl, setAudioFileUrl] = useState();
-  const [captions, setCaptions] =  useState();
+  const [captions, setCaptions] = useState();
+  const [generatedImages, setGeneratedImages] = useState([]);
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({
@@ -52,6 +53,7 @@ function CreateNew() {
         } else {
           throw new Error('Failed to generate audio file URL');
         }
+        await GenerateImage(scriptData);
       } else {
         console.error('Invalid response format: expected an array', scriptData);
         setVideoScript([]);
@@ -112,6 +114,24 @@ function CreateNew() {
     }
   };
 
+  const GenerateImage = async (scriptData) => {
+    if (!Array.isArray(scriptData)) {
+      console.error('scriptData is not an array:', scriptData);
+      return;
+    }
+    try {
+      const imagePromises = scriptData.map(async (element) => {
+        const response = await axios.post('/api/generate-image', { imagePrompt: element.imagePrompt });
+        return response.data.image; // Returns firebase download URL
+      });
+      const generatedImages = await Promise.all(imagePromises);
+      setGeneratedImages(generatedImages);
+      console.log('Generated image URLs:', generatedImages);
+    } catch (error) {
+      console.error('Error generating images:', error.message);
+    }
+  };
+
   return (
     <div className='md:px-20'>
       <h2 className='font-bold text-4xl text-primary text-center mt-6'>Create new</h2>
@@ -133,6 +153,19 @@ function CreateNew() {
           Create Short Video
         </button>
       </div>
+      {/* Display generated images */}
+      {generatedImages.length > 0 && (
+        <div className='mt-8 grid grid-cols-1 md:grid-cols-2 gap-4'>
+          {generatedImages.map((image, index) => (
+            <img
+              key={index}
+              src={image} // URL from AIGuruLab
+              alt={`Generated Image ${index + 1}`}
+              className='w-full h-auto rounded-lg shadow-md'
+            />
+          ))}
+        </div>
+      )}
       <CustomLoading loading={loading} />
     </div>
   );
