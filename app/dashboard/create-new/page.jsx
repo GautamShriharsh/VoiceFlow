@@ -22,7 +22,7 @@ function CreateNew() {
     duration: '',
   });
   const [playVideo, setPlayVideo] = useState(true);
-  const [videoId, setVideoId] = useState();
+  const [videoId, setVideoId] = useState(9);
   const [loadingCount, setLoadingCount] = useState(0);
   const [error, setError] = useState(null);
   const loading = loadingCount > 0;
@@ -34,43 +34,46 @@ function CreateNew() {
     }));
   };
 
-  const saveVideoDataToDatabase = async () => {
+  const saveVideoDataToDatabase = async (dataToSave) => {
     if (!user) {
       setError('User not authenticated');
       return;
     }
 
+    if (
+      !dataToSave.videoScript?.length ||
+      !dataToSave.audioFileUrl ||
+      !dataToSave.captions?.length ||
+      !dataToSave.imageList?.length
+    ) {
+      setError('Incomplete video data. Please ensure all steps complete successfully.');
+      console.log('Data passed to save:', dataToSave);
+      console.log('Current videoData state:', videoData);
+      return;
+    }
+
     const videoDataToSave = {
-      script: videoData.videoScript,
-      audioFileUrl: videoData.audioFileUrl,
-      captions: videoData.captions ? JSON.parse(videoData.captions) : {},
-      imageList: videoData.imageList,
+      script: dataToSave.videoScript,
+      audioFileUrl: dataToSave.audioFileUrl,
+      captions: dataToSave.captions,
+      imageList: dataToSave.imageList,
       createdBy: user.primaryEmailAddress?.emailAddress || 'unknown',
     };
+
+    console.log('Saving to DB with API data:', videoDataToSave);
 
     try {
       const [insertedData] = await db
         .insert(VideoData)
         .values(videoDataToSave)
-        .returning('id');
+        .returning({ id: VideoData.id });
+
       console.log('VideoData saved to database with ID:', insertedData.id);
-      setVideoId(insertedData.id); // Set the videoId state
-      setPlayVideo(true); // Trigger PlayerDialogue to open
+      setVideoId(insertedData.id);
+      setPlayVideo(true);
     } catch (err) {
       console.error('Error saving VideoData to database:', err);
       setError('Failed to save video data to database');
-    }
-  };
-
-  const onCreateVideoHandler = async () => {
-    if (formData.topic && formData.style && formData.duration) {
-      setError(null);
-      await GetVideoScript();
-      if (videoData.videoScript.length > 0 && videoData.audioFileUrl && videoData.imageList.length > 0) {
-        await saveVideoDataToDatabase();
-      }
-    } else {
-      alert('Please fill all fields (Topic, Style, Duration)!');
     }
   };
 
@@ -82,51 +85,16 @@ function CreateNew() {
       const response = await axios.post('/api/get-video-script', { prompt });
       const scriptData = response.data.result;
       if (Array.isArray(scriptData)) {
-        setVideoData((prev) => ({
-          ...prev,
-          videoScript: scriptData,
-        }));
-        const generatedAudioUrl = await GenerateAudioFile(scriptData);
-        if (generatedAudioUrl) {
-          console.log('This is the generated Audio Url:', generatedAudioUrl);
-          await GenerateAudioCaption(generatedAudioUrl);
-        } else {
-          throw new Error('Failed to generate audio file URL');
-        }
-        await GenerateImage(scriptData);
+        console.log('Video script generated:', scriptData);
+        return scriptData;
       } else {
         console.error('Invalid response format: expected an array', scriptData);
-        setVideoData((prev) => ({
-          ...prev,
-          videoScript: [],
-        }));
+        throw new Error('Invalid script data format');
       }
     } catch (error) {
       console.error('Error in GetVideoScript:', error.message);
       setError('Failed to generate video script');
-    } finally {
-      setLoadingCount((prev) => prev - 1);
-    }
-  };
-
-  const GenerateAudioCaption = async (fileUrl) => {
-    setLoadingCount((prev) => prev + 1);
-    if (!fileUrl) {
-      console.error('No audio file URL provided');
-      setLoadingCount((prev) => prev - 1);
-      return;
-    }
-
-    try {
-      const response = await axios.post('/api/generate-caption', { audioFileUrl: fileUrl });
-      console.log('Caption result:', response.data.result);
-      setVideoData((prev) => ({
-        ...prev,
-        captions: response.data.result,
-      }));
-    } catch (error) {
-      console.error('Error generating caption:', error.message);
-      setError('Failed to generate captions');
+      throw error;
     } finally {
       setLoadingCount((prev) => prev - 1);
     }
@@ -150,22 +118,40 @@ function CreateNew() {
     console.log('Voiceover script:', voiceoverScript.trim());
 
     try {
-      const response = await axios.post('/api/generate-audio', { text: voiceoverScript, id });
+      const response = await axios.post('/api/generate-audio', { text: voiceoverScript.trim(), id });
       const audioUrl = response.data.downloadUrl;
       if (audioUrl) {
-        setVideoData((prev) => ({
-          ...prev,
-          audioFileUrl: audioUrl,
-        }));
+        console.log('Audio file URL generated:', audioUrl);
         return audioUrl;
       } else {
         console.error('No valid URL in response:', response.data);
-        return null;
+        throw new Error('No audio URL returned');
       }
     } catch (error) {
       console.error('Error generating audio file:', error.message, error.response?.data);
       setError('Failed to generate audio file');
+      throw error;
+    } finally {
+      setLoadingCount((prev) => prev - 1);
+    }
+  };
+
+  const GenerateAudioCaption = async (fileUrl) => {
+    setLoadingCount((prev) => prev + 1);
+    if (!fileUrl) {
+      console.error('No audio file URL provided');
+      setLoadingCount((prev) => prev - 1);
       return null;
+    }
+
+    try {
+      const response = await axios.post('/api/generate-caption', { audioFileUrl: fileUrl });
+      console.log('Captions generated:', response.data.result);
+      return response.data.result;
+    } catch (error) {
+      console.error('Error generating caption:', error.message);
+      setError('Failed to generate captions');
+      throw error;
     } finally {
       setLoadingCount((prev) => prev - 1);
     }
@@ -176,7 +162,7 @@ function CreateNew() {
     if (!Array.isArray(scriptData)) {
       console.error('scriptData is not an array:', scriptData);
       setLoadingCount((prev) => prev - 1);
-      return;
+      return null;
     }
     try {
       const imagePromises = scriptData.map(async (element) => {
@@ -184,13 +170,68 @@ function CreateNew() {
         return response.data.image;
       });
       const generatedImages = await Promise.all(imagePromises);
-      setVideoData((prev) => ({
-        ...prev,
-        imageList: generatedImages,
-      }));
+      console.log('Images generated:', generatedImages);
+      return generatedImages;
     } catch (error) {
       console.error('Error generating images:', error.message);
       setError('Failed to generate images');
+      throw error;
+    } finally {
+      setLoadingCount((prev) => prev - 1);
+    }
+  };
+
+  const onCreateVideoHandler = async () => {
+    if (!formData.topic || !formData.style || !formData.duration) {
+      alert('Please fill all fields (Topic, Style, Duration)!');
+      return;
+    }
+
+    setError(null);
+    setLoadingCount((prev) => prev + 1);
+    try {
+      // Build data locally
+      const videoDataToSave = {
+        videoScript: [],
+        audioFileUrl: '',
+        captions: [],
+        imageList: [],
+      };
+
+      // Step 1: Get video script
+      const scriptData = await GetVideoScript();
+      if (!scriptData || !scriptData.length) {
+        throw new Error('No script data generated');
+      }
+      videoDataToSave.videoScript = scriptData;
+
+      // Step 2: Generate audio file
+      const audioUrl = await GenerateAudioFile(scriptData);
+      if (!audioUrl) {
+        throw new Error('Audio generation failed');
+      }
+      videoDataToSave.audioFileUrl = audioUrl;
+
+      // Step 3: Generate captions
+      const captions = await GenerateAudioCaption(audioUrl);
+      if (!captions || !captions.length) {
+        throw new Error('Caption generation failed');
+      }
+      videoDataToSave.captions = captions;
+
+      // Step 4: Generate images
+      const imageList = await GenerateImage(scriptData);
+      if (!imageList || !imageList.length) {
+        throw new Error('Image generation failed');
+      }
+      videoDataToSave.imageList = imageList;
+
+      // Step 5: Update context and save
+      setVideoData(videoDataToSave);
+      await saveVideoDataToDatabase(videoDataToSave);
+    } catch (err) {
+      console.error('Error in video creation process:', err);
+      if (!error) setError(err.message || 'An error occurred during video creation');
     } finally {
       setLoadingCount((prev) => prev - 1);
     }
