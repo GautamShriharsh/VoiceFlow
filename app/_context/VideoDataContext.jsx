@@ -1,13 +1,13 @@
-// app/_context/VideoDataContext.js
-import { createContext, useState, useContext } from 'react';
+// @/app/_context/VideoDataContext.js
+import React, { createContext, useContext, useState } from 'react';
 
-export const VideoDataContext = createContext();
+const VideoDataContext = createContext();
 
-export const VideoDataProvider = ({ children }) => {
+export function VideoDataProvider({ children }) {
   const [videoData, setVideoData] = useState({
     videoScript: [],
     audioFileUrl: '',
-    captions: '',
+    captions: [],
     imageList: [],
   });
 
@@ -16,7 +16,12 @@ export const VideoDataProvider = ({ children }) => {
       {children}
     </VideoDataContext.Provider>
   );
-};
+}
 
-// Custom hook to use the context
-export const useVideoData = () => useContext(VideoDataContext);
+export function useVideoData() {
+  const context = useContext(VideoDataContext);
+  if (!context) {
+    throw new Error('useVideoData must be used within a VideoDataProvider');
+  }
+  return context;
+}
