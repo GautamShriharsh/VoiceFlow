@@ -26,7 +26,7 @@ function SelectDuration({ onDurationChange }) {
           <SelectValue placeholder="Select duration" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="15">15 seconds</SelectItem>
+          <SelectItem value="5">5 seconds</SelectItem>
           <SelectItem value="30">30 seconds</SelectItem>
           <SelectItem value="60">60 seconds</SelectItem>
         </SelectContent>
