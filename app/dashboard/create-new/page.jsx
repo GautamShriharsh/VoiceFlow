@@ -12,6 +12,7 @@ import { useUser } from '@clerk/nextjs';
 import { db } from '../../../configs/db';
 import { VideoData } from '../../../configs/schema';
 import PlayerDialogue from '../_components/PlayerDialogue';
+import { useRouter } from 'next/navigation';
 
 function CreateNew() {
   const { videoData, setVideoData } = useVideoData();
@@ -21,8 +22,8 @@ function CreateNew() {
     style: '',
     duration: '',
   });
-  const [playVideo, setPlayVideo] = useState(true);
-  const [videoId, setVideoId] = useState(9);
+  const [playVideo, setPlayVideo] = useState(false);
+  const [videoId, setVideoId] = useState();
   const [loadingCount, setLoadingCount] = useState(0);
   const [error, setError] = useState(null);
   const loading = loadingCount > 0;
